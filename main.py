@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from config import load_config, save_config, AppConfig, DEFAULT_MODEL_MAPPING, CLIENT_ID, CLIENT_SECRET
-from account_manager import AccountManager, Account
+from account_manager import AccountManager, Account, relaunch_antigravity, find_antigravity_executable
 from upstream_client import UpstreamClient, UpstreamException, QuotaExceededException
 from router import SmartRotator
 from adapters.openai_adapter import build_cloudcode_request, format_openai_response, format_openai_stream_chunk
@@ -262,11 +262,32 @@ async def toggle_plan(acc_id: str):
     return {"success": True, "plan_type": acc.plan_type}
 
 @app.post("/api/accounts/{acc_id}/sync_ide")
-async def sync_ide(acc_id: str):
+async def sync_ide(acc_id: str, relaunch: Optional[bool] = None):
+    should_relaunch = relaunch if relaunch is not None else getattr(config, "auto_relaunch_antigravity", False)
     success = account_mgr.sync_to_antigravity_ide(acc_id)
-    if success:
-        return {"success": True}
-    return {"success": False, "error": "Account not found or sync failed"}
+    if not success:
+        return {"success": False, "error": "Account not found or sync failed"}
+
+    if should_relaunch:
+        async def _deferred_relaunch():
+            await asyncio.sleep(0.5)
+            relaunch_antigravity()
+        asyncio.create_task(_deferred_relaunch())
+        return {"success": True, "relaunched": True}
+
+    return {"success": True, "relaunched": False}
+
+@app.post("/api/antigravity/relaunch")
+async def trigger_relaunch():
+    exe = find_antigravity_executable()
+    if not exe:
+        raise HTTPException(status_code=404, detail="Không tìm thấy file Antigravity.exe trên hệ thống.")
+
+    async def _deferred_relaunch():
+        await asyncio.sleep(0.5)
+        relaunch_antigravity()
+    asyncio.create_task(_deferred_relaunch())
+    return {"success": True, "message": "Đang khởi động lại Antigravity..."}
 
 @app.post("/api/accounts/{acc_id}/refresh_quota")
 async def refresh_quota(acc_id: str):
@@ -512,6 +533,7 @@ class UpdateConfigPayload(BaseModel):
     api_key: Optional[str] = None
     cooldown_seconds_on_429: Optional[int] = None
     auto_refresh_quota_interval: Optional[int] = None
+    auto_relaunch_antigravity: Optional[bool] = None
 
 @app.post("/api/config")
 async def update_config(payload: UpdateConfigPayload):
@@ -525,6 +547,8 @@ async def update_config(payload: UpdateConfigPayload):
         config.cooldown_seconds_on_429 = payload.cooldown_seconds_on_429
     if payload.auto_refresh_quota_interval is not None:
         config.auto_refresh_quota_interval = payload.auto_refresh_quota_interval
+    if payload.auto_relaunch_antigravity is not None:
+        config.auto_relaunch_antigravity = payload.auto_relaunch_antigravity
     save_config(config)
     return {"success": True, "config": config.model_dump()}
 

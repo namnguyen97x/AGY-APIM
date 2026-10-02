@@ -59,6 +59,7 @@ class AppConfig(BaseModel):
     cooldown_seconds_on_429: int = 900  # 15 minutes cooldown if resetTime not given
     rotation_strategy: str = "highest_quota"  # "highest_quota" | "round_robin" | "priority"
     auto_refresh_quota_interval: int = 300  # seconds between auto quota refresh (default 300s = 5m, 0 to disable)
+    auto_relaunch_antigravity: bool = False  # Automatically relaunch Antigravity IDE when hot-swapping
     model_mappings: Dict[str, str] = Field(default_factory=lambda: DEFAULT_MODEL_MAPPING.copy())
     enable_web_ui: bool = True
 

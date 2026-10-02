@@ -227,6 +227,11 @@
               <i class="fa-solid fa-rotate text-emerald-400"></i>
               <span>Làm mới Quota</span>
             </button>
+
+            <button onclick="relaunchAntigravity()" class="px-3.5 py-2 rounded-lg bg-indigo-600/90 hover:bg-indigo-600 text-white text-xs font-semibold shadow-md shadow-indigo-600/30 border border-indigo-500/60 transition flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer" title="Đóng và khởi động lại Antigravity để nạp token tài khoản mới ngay lập tức">
+              <i class="fa-solid fa-rocket text-amber-300"></i>
+              <span>Relaunch Antigravity</span>
+            </button>
           </div>
         </div>
       </div>
@@ -520,6 +525,14 @@
           <div>
             <label class="block text-slate-300 mb-1.5 font-semibold">API Key Xác Thực (Tùy chọn)</label>
             <input type="text" id="cfg-apikey" placeholder="Để trống nếu chỉ sử dụng cục bộ trên máy tính" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
+          </div>
+
+          <div class="pt-2">
+            <label class="flex items-center space-x-2 text-slate-300 font-semibold cursor-pointer">
+              <input type="checkbox" id="cfg-auto-relaunch" class="w-4 h-4 rounded text-sky-500 bg-slate-950 border-slate-700 focus:ring-0 cursor-pointer">
+              <span>Tự động Khởi Động Lại (Relaunch) Antigravity khi Hot-Swap</span>
+            </label>
+            <p class="text-[11px] text-slate-400 mt-1 ml-6">Nếu bật, khi bạn bấm "Hot-Swap sang Antigravity", tool sẽ tự động đóng và mở lại Antigravity trong 1 giây để nạp tài khoản mới vào RAM ngay lập tức mà không làm mất lịch sử hội thoại.</p>
           </div>
         </div>
 

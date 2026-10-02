@@ -120,6 +120,16 @@ def refresh_quotas_action(icon=None, item=None):
             safe_notify(icon, f"Lỗi làm mới Quota: {e}", "Antigravity Hub")
     threading.Thread(target=_refresh, daemon=True).start()
 
+def relaunch_antigravity_action(icon=None, item=None):
+    def _relaunch():
+        try:
+            with httpx.Client(timeout=10) as client:
+                client.post(f"http://127.0.0.1:{PORT}/api/antigravity/relaunch")
+            safe_notify(icon, "Đang khởi động lại Antigravity để nạp tài khoản mới...", "Antigravity Hub")
+        except Exception as e:
+            safe_notify(icon, f"Lỗi khởi động lại: {e}", "Antigravity Hub")
+    threading.Thread(target=_relaunch, daemon=True).start()
+
 def run_hermes_action(icon=None, item=None):
     subprocess.Popen(["cmd.exe", "/c", "start", "hermes"], cwd=str(PROJECT_ROOT))
 
@@ -184,6 +194,7 @@ def main():
     menu = pystray.Menu(
         pystray.MenuItem("🌐 Mở Web Dashboard", open_dashboard, default=True),
         pystray.MenuItem("🔄 Làm Mới Quota Toàn Bộ", refresh_quotas_action),
+        pystray.MenuItem("🚀 Khởi Động Lại Antigravity", relaunch_antigravity_action),
         pystray.Menu.SEPARATOR,
         pystray.MenuItem(get_status_text, None, enabled=False),
         pystray.Menu.SEPARATOR,

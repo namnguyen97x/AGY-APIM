@@ -3,6 +3,7 @@ import json
 import logging
 import os
 import shutil
+import subprocess
 import time
 import uuid
 from datetime import datetime, timezone
@@ -402,9 +403,52 @@ class AccountManager:
             self.active_ide_account_id = acc.id
             self.save()
             logger.info(f"Successfully synchronized active account {acc.email} to Antigravity IDE and Antigravity Bản Thường (Cockpit/Tools).")
+
+            if relaunch:
+                relaunch_antigravity()
+
             return True
         except Exception as e:
             logger.error(f"Failed to sync account: {e}")
             return False
 
     sync_to_antigravity_ide = sync_to_antigravity
+
+def find_antigravity_executable() -> Optional[Path]:
+    """Finds the main executable of Antigravity on this machine."""
+    candidates = [
+        USER_HOME / "AppData" / "Local" / "Programs" / "antigravity" / "Antigravity.exe",
+        USER_HOME / "AppData" / "Local" / "Programs" / "antigravity-ide" / "Antigravity.exe",
+        USER_HOME / "AppData" / "Local" / "antigravity" / "Antigravity.exe",
+        Path(os.environ.get("LOCALAPPDATA", "")) / "Programs" / "antigravity" / "Antigravity.exe",
+        Path("C:/Program Files/Antigravity/Antigravity.exe"),
+    ]
+    for c in candidates:
+        if c.exists():
+            return c
+    return None
+
+def relaunch_antigravity() -> bool:
+    """Closes and relaunches Antigravity so that new account credentials take effect immediately."""
+    exe_path = find_antigravity_executable()
+    if not exe_path:
+        logger.error("Antigravity executable not found!")
+        return False
+
+    try:
+        subprocess.run(["taskkill", "/F", "/IM", "Antigravity.exe"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    except Exception as e:
+        logger.warning(f"Error terminating Antigravity: {e}")
+
+    time.sleep(1.0)
+
+    try:
+        flags = 0
+        if os.name == "nt":
+            flags = subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP
+        subprocess.Popen([str(exe_path)], creationflags=flags, close_fds=True)
+        logger.info(f"Relaunched Antigravity from {exe_path}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to relaunch Antigravity: {e}")
+        return False

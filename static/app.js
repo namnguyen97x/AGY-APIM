@@ -212,6 +212,10 @@ function renderStats() {
   if (apiInput && state.config.api_key !== undefined && document.activeElement !== apiInput) {
     apiInput.value = state.config.api_key || '';
   }
+  const relaunchCheck = document.getElementById('cfg-auto-relaunch');
+  if (relaunchCheck && state.config.auto_relaunch_antigravity !== undefined && document.activeElement !== relaunchCheck) {
+    relaunchCheck.checked = Boolean(state.config.auto_relaunch_antigravity);
+  }
 
   const port = state.config.port || 8088;
   const gwPort = document.getElementById('gateway-port');
@@ -588,10 +592,32 @@ async function syncToIde(accId) {
     const res = await fetch(`/api/accounts/${accId}/sync_ide`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast('Đã hot-swap tài khoản cho Antigravity (Bản Thường & IDE)! Giữ nguyên 100% dữ liệu chat.');
+      if (data.relaunched) {
+        showToast('🚀 Đã hot-swap và đang tự động khởi động lại Antigravity để nạp token mới...');
+      } else {
+        showToast('Đã hot-swap tài khoản cho Antigravity! Bấm "Relaunch Antigravity" hoặc Ctrl+R để áp dụng ngay.');
+      }
       loadData();
     } else {
       showToast('Lỗi đồng bộ: ' + data.error, true);
+    }
+  } catch (err) {
+    showToast('Lỗi: ' + err, true);
+  }
+}
+
+async function relaunchAntigravity() {
+  if (!confirm('Khởi động lại Antigravity ngay bây giờ?\n(Toàn bộ tab, phiên chat và công việc hiện tại sẽ được tự động giữ nguyên và nạp lại với tài khoản mới)')) {
+    return;
+  }
+  try {
+    showToast('🚀 Đang gửi lệnh khởi động lại Antigravity...');
+    const res = await fetch('/api/antigravity/relaunch', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast('🚀 Antigravity đang đóng và khởi động lại trong giây lát...');
+    } else {
+      showToast(data.detail || 'Lỗi khởi động lại', true);
     }
   } catch (err) {
     showToast('Lỗi: ' + err, true);
@@ -757,6 +783,10 @@ function openConfigModal() {
   if (autoRefreshEl && state.config.auto_refresh_quota_interval !== undefined) {
     autoRefreshEl.value = state.config.auto_refresh_quota_interval;
   }
+  const autoRelaunchEl = document.getElementById('cfg-auto-relaunch');
+  if (autoRelaunchEl && state.config.auto_relaunch_antigravity !== undefined) {
+    autoRelaunchEl.checked = Boolean(state.config.auto_relaunch_antigravity);
+  }
   document.getElementById('cfg-apikey').value = state.config.api_key || '';
   document.getElementById('config-modal').classList.remove('hidden');
 }
@@ -771,6 +801,8 @@ async function submitConfig() {
   const cooldown = parseInt(document.getElementById('cfg-cooldown').value) || 900;
   const autoRefreshEl = document.getElementById('cfg-auto-refresh');
   const autoRefresh = autoRefreshEl ? parseInt(autoRefreshEl.value) : 300;
+  const autoRelaunchEl = document.getElementById('cfg-auto-relaunch');
+  const autoRelaunch = autoRelaunchEl ? autoRelaunchEl.checked : false;
   const apikey = document.getElementById('cfg-apikey').value.trim();
 
   try {
@@ -782,10 +814,11 @@ async function submitConfig() {
         min_quota_threshold: threshold,
         cooldown_seconds_on_429: cooldown,
         auto_refresh_quota_interval: isNaN(autoRefresh) ? 300 : autoRefresh,
+        auto_relaunch_antigravity: autoRelaunch,
         api_key: apikey
       })
     });
-    showToast('Đã lưu cấu hình Gateway & Tự động làm mới Quota!');
+    showToast('Đã lưu cấu hình Gateway & Tự động Relaunch!');
     loadData();
   } catch (err) {
     showToast('Lỗi: ' + err, true);
