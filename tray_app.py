@@ -51,10 +51,23 @@ class UvicornServerThread(threading.Thread):
         self.server = uvicorn.Server(config=self.config)
 
     def run(self):
+        import socket
+        for _ in range(20):
+            try:
+                s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                s.bind((HOST, PORT))
+                s.close()
+                break
+            except OSError:
+                time.sleep(1.5)
+
+        self.server = uvicorn.Server(config=self.config)
         self.server.run()
 
     def stop(self):
-        self.server.should_exit = True
+        if hasattr(self, 'server'):
+            self.server.should_exit = True
 
 def get_or_create_icon():
     ico_path = PROJECT_ROOT / "static" / "app.ico"

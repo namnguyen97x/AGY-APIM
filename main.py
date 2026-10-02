@@ -66,12 +66,27 @@ def verify_api_key(authorization: Optional[str] = Header(None)):
 # Background periodic quota poller
 async def quota_poller_task():
     while True:
-        try:
-            logger.info("Running background quota check...")
-            await account_mgr.refresh_all_quotas()
-        except Exception as e:
-            logger.error(f"Error in background quota check: {e}")
-        await asyncio.sleep(600)  # Check every 10 minutes
+        interval = getattr(config, "auto_refresh_quota_interval", 300)
+        if interval > 0:
+            # Sleep in short increments of 5 seconds so configuration updates apply promptly
+            waited = 0
+            while waited < interval:
+                await asyncio.sleep(min(5, interval - waited))
+                waited += 5
+                curr_int = getattr(config, "auto_refresh_quota_interval", 300)
+                if curr_int != interval:
+                    interval = curr_int
+                    break
+
+            if getattr(config, "auto_refresh_quota_interval", 300) > 0:
+                try:
+                    logger.info(f"Auto-refreshing quota for all accounts (cycle: {interval}s)...")
+                    await account_mgr.refresh_all_quotas()
+                except Exception as e:
+                    logger.error(f"Error in background quota check: {e}")
+        else:
+            # Auto-refresh is disabled by user, poll interval check every 10s
+            await asyncio.sleep(10)
 
 @app.on_event("startup")
 async def on_startup():
@@ -99,6 +114,7 @@ async def get_status():
     return {
         "accounts": [acc.model_dump() for acc in account_mgr.accounts.values()],
         "active_ide_account_id": account_mgr.active_ide_account_id,
+        "current_api_account_id": rotator.current_api_account_id or account_mgr.active_ide_account_id,
         "config": config.model_dump(),
         "rotations": rotator.rotation_history
     }
@@ -304,30 +320,42 @@ async def get_integrations_status():
     hermes_path = Path.home() / "AppData" / "Local" / "hermes" / "config.yaml"
     hermes_installed = hermes_path.exists()
     hermes_connected = False
+    hermes_has_backup = False
     if hermes_installed:
         try:
             content = hermes_path.read_text(encoding="utf-8")
             if f":{config.port}" in content:
                 hermes_connected = True
+            bak_path = hermes_path.with_name("config.yaml.antigravity-hub.bak")
+            hermes_has_backup = bak_path.exists()
         except Exception:
             pass
 
+    scripts_dir = Path(__file__).parent / "scripts"
+    codex_bat = scripts_dir / "Chay_Codex_Voi_Antigravity_API.bat"
+    claude_bat = scripts_dir / "Chay_Claude_Code_API.bat"
+    desktop_codex_bat = Path.home() / "Desktop" / "Chay_Codex_Voi_Antigravity_API.bat"
+    desktop_claude_bat = Path.home() / "Desktop" / "Chay_Claude_Code_API.bat"
+
+    codex_connected = codex_bat.exists() or desktop_codex_bat.exists()
+    claude_connected = claude_bat.exists() or desktop_claude_bat.exists()
     codex_dir = Path.home() / ".codex"
-    codex_bat = Path.home() / "Desktop" / "Chay_Codex_Voi_Antigravity_API.bat"
-    claude_bat = Path.home() / "Desktop" / "Chay_Claude_Code_API.bat"
 
     return {
         "hermes": {
             "installed": hermes_installed,
             "connected": hermes_connected,
+            "has_backup": hermes_has_backup,
             "path": str(hermes_path)
         },
         "codex": {
             "installed": codex_dir.exists(),
-            "connected": codex_bat.exists()
+            "connected": codex_connected,
+            "path": str(codex_bat if codex_bat.exists() else desktop_codex_bat)
         },
         "claude_code": {
-            "connected": claude_bat.exists()
+            "connected": claude_connected,
+            "path": str(claude_bat if claude_bat.exists() else desktop_claude_bat)
         }
     }
 
@@ -342,7 +370,8 @@ async def integrate_hermes():
         # Backup
         bak_path = hermes_path.with_name("config.yaml.antigravity-hub.bak")
         content = hermes_path.read_text(encoding="utf-8")
-        bak_path.write_text(content, encoding="utf-8")
+        if not bak_path.exists() and f":{config.port}" not in content:
+            bak_path.write_text(content, encoding="utf-8")
 
         # Update base_url
         new_content = re.sub(
@@ -354,6 +383,45 @@ async def integrate_hermes():
         return {"success": True, "message": f"Đã cấu hình Hermes Agent trỏ về Antigravity Hub (Port {config.port})!"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi cấu hình Hermes: {e}")
+
+@app.post("/api/integrations/hermes/restore")
+async def restore_hermes():
+    import re
+    hermes_path = Path.home() / "AppData" / "Local" / "hermes" / "config.yaml"
+    if not hermes_path.exists():
+        raise HTTPException(status_code=404, detail="Không tìm thấy cấu hình Hermes Agent tại AppData\\Local\\hermes\\config.yaml")
+
+    try:
+        bak_path = hermes_path.with_name("config.yaml.antigravity-hub.bak")
+        restored = False
+        if bak_path.exists():
+            bak_content = bak_path.read_text(encoding="utf-8")
+            if f":{config.port}" not in bak_content:
+                hermes_path.write_text(bak_content, encoding="utf-8")
+                restored = True
+            bak_path.unlink(missing_ok=True)
+
+        if not restored:
+            alt_bak = hermes_path.with_name("config.yaml.antigravity-manager.bak")
+            if alt_bak.exists():
+                alt_content = alt_bak.read_text(encoding="utf-8")
+                if f":{config.port}" not in alt_content:
+                    hermes_path.write_text(alt_content, encoding="utf-8")
+                    restored = True
+                alt_bak.unlink(missing_ok=True)
+
+        if not restored:
+            content = hermes_path.read_text(encoding="utf-8")
+            new_content = re.sub(
+                r"(base_url:\s*)http[s]?://[^\r\n]+",
+                r"\g<1>https://api.openai.com/v1",
+                content
+            )
+            hermes_path.write_text(new_content, encoding="utf-8")
+
+        return {"success": True, "message": "Đã khôi phục thành công cấu hình mặc định ban đầu cho Hermes Agent!"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khôi phục cấu hình Hermes: {e}")
 
 @app.post("/api/integrations/codex")
 async def integrate_codex():
@@ -383,6 +451,20 @@ pause
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo file Codex: {e}")
 
+@app.post("/api/integrations/codex/restore")
+async def restore_codex():
+    scripts_dir = Path(__file__).parent / "scripts"
+    bat_path = scripts_dir / "Chay_Codex_Voi_Antigravity_API.bat"
+    desktop_bat = Path.home() / "Desktop" / "Chay_Codex_Voi_Antigravity_API.bat"
+    try:
+        if bat_path.exists():
+            bat_path.unlink()
+        if desktop_bat.exists():
+            desktop_bat.unlink()
+        return {"success": True, "message": "Đã gỡ bỏ script API Hub cho OpenAI Codex. Khi chạy 'codex', ứng dụng sẽ dùng cấu hình OpenAI mặc định của bạn."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khôi phục Codex: {e}")
+
 @app.post("/api/integrations/claude_code")
 async def integrate_claude_code():
     scripts_dir = Path(__file__).parent / "scripts"
@@ -410,11 +492,26 @@ pause
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Lỗi tạo file Claude Code: {e}")
 
+@app.post("/api/integrations/claude_code/restore")
+async def restore_claude_code():
+    scripts_dir = Path(__file__).parent / "scripts"
+    bat_path = scripts_dir / "Chay_Claude_Code_API.bat"
+    desktop_bat = Path.home() / "Desktop" / "Chay_Claude_Code_API.bat"
+    try:
+        if bat_path.exists():
+            bat_path.unlink()
+        if desktop_bat.exists():
+            desktop_bat.unlink()
+        return {"success": True, "message": "Đã gỡ bỏ script API Hub cho Claude Code. Claude Code sẽ kết nối với tài khoản Anthropic mặc định của bạn."}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Lỗi khôi phục Claude Code: {e}")
+
 class UpdateConfigPayload(BaseModel):
     min_quota_threshold: Optional[float] = None
     rotation_strategy: Optional[str] = None
     api_key: Optional[str] = None
     cooldown_seconds_on_429: Optional[int] = None
+    auto_refresh_quota_interval: Optional[int] = None
 
 @app.post("/api/config")
 async def update_config(payload: UpdateConfigPayload):
@@ -426,6 +523,8 @@ async def update_config(payload: UpdateConfigPayload):
         config.api_key = payload.api_key if payload.api_key.strip() else None
     if payload.cooldown_seconds_on_429 is not None:
         config.cooldown_seconds_on_429 = payload.cooldown_seconds_on_429
+    if payload.auto_refresh_quota_interval is not None:
+        config.auto_refresh_quota_interval = payload.auto_refresh_quota_interval
     save_config(config)
     return {"success": True, "config": config.model_dump()}
 

@@ -88,6 +88,7 @@ async function loadData() {
     const data = await res.json();
     state.accounts = data.accounts || [];
     state.activeIdeAccountId = data.active_ide_account_id;
+    state.currentApiAccountId = data.current_api_account_id || data.active_ide_account_id;
     state.config = data.config || {};
     state.rotations = data.rotations || [];
 
@@ -103,7 +104,6 @@ function renderStats() {
   const total = state.accounts.length;
   const proCount = state.accounts.filter(a => a.plan_type === 'PRO').length;
   const freeCount = total - proCount;
-  const activeCount = state.accounts.filter(a => !a.disabled && (a.cooldown_until <= Date.now() / 1000)).length;
 
   document.getElementById('stat-total-accounts').innerText = total;
   document.getElementById('stat-pro-accounts').innerText = proCount;
@@ -116,17 +116,101 @@ function renderStats() {
   document.getElementById('stat-threshold').innerText = Math.round((state.config.min_quota_threshold || 0.05) * 100) + '%';
   document.getElementById('stat-total-rotations').innerText = state.rotations.length;
 
-  const activeIdeAcc = state.accounts.find(a => a.id === state.activeIdeAccountId);
-  if (activeIdeAcc) {
-    const isPro = activeIdeAcc.plan_type === 'PRO';
+  // Active Account
+  const activeAcc = state.accounts.find(a => a.id === (state.activeIdeAccountId || state.currentApiAccountId)) || (state.accounts.length > 0 ? state.accounts[0] : null);
+
+  if (activeAcc) {
+    const isPro = activeAcc.plan_type === 'PRO';
     document.getElementById('stat-active-ide').innerHTML = `
       <div class="flex items-center space-x-1.5 truncate">
-        ${isPro ? '<i class="fa-solid fa-crown text-amber-400 text-xs"></i>' : '<i class="fa-solid fa-code text-sky-400 text-xs"></i>'}
-        <span class="truncate">${activeIdeAcc.email}</span>
+        ${isPro ? '<i class="fa-solid fa-crown text-amber-400 text-xs"></i>' : '<i class="fa-solid fa-circle-check text-emerald-400 text-xs"></i>'}
+        <span class="truncate font-semibold">${activeAcc.email}</span>
       </div>
     `;
   } else {
     document.getElementById('stat-active-ide').innerText = 'Chưa đồng bộ';
+  }
+
+  // Render standout Active Account Banner
+  const banner = document.getElementById('active-account-banner');
+  if (banner) {
+    if (activeAcc) {
+      banner.classList.remove('hidden');
+      const isPro = activeAcc.plan_type === 'PRO';
+      const initials = (activeAcc.email || 'AG').substring(0, 2).toUpperCase();
+      const initialsEl = document.getElementById('active-acc-initials');
+      if (initialsEl) initialsEl.innerText = initials;
+
+      const crownEl = document.getElementById('active-acc-crown');
+      if (crownEl) {
+        if (isPro) crownEl.classList.remove('hidden');
+        else crownEl.classList.add('hidden');
+      }
+
+      const emailEl = document.getElementById('active-acc-email');
+      if (emailEl) emailEl.innerText = activeAcc.email;
+      const nameEl = document.getElementById('active-acc-name');
+      if (nameEl) nameEl.innerText = activeAcc.name ? `(${activeAcc.name})` : '';
+
+      const badgeEl = document.getElementById('active-acc-tier-badge');
+      if (badgeEl) {
+        if (isPro) {
+          badgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/50 flex items-center gap-1';
+          badgeEl.innerHTML = '<i class="fa-solid fa-crown text-[9px]"></i> 👑 PRO';
+        } else {
+          badgeEl.className = 'px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700';
+          badgeEl.innerText = '🆓 BẢN THƯỜNG';
+        }
+      }
+
+      const geminiWk = activeAcc.quota_buckets && activeAcc.quota_buckets['gemini-weekly'] ? activeAcc.quota_buckets['gemini-weekly'].remaining_fraction : 1.0;
+      const gemini5h = activeAcc.quota_buckets && activeAcc.quota_buckets['gemini-5h'] ? activeAcc.quota_buckets['gemini-5h'].remaining_fraction : 1.0;
+      const claudeWk = activeAcc.quota_buckets && activeAcc.quota_buckets['3p-weekly'] ? activeAcc.quota_buckets['3p-weekly'].remaining_fraction : 1.0;
+      const claude5h = activeAcc.quota_buckets && activeAcc.quota_buckets['3p-5h'] ? activeAcc.quota_buckets['3p-5h'].remaining_fraction : 1.0;
+
+      const gPct = Math.round(Math.min(geminiWk, gemini5h) * 100);
+      const cPct = Math.round(Math.min(claudeWk, claude5h) * 100);
+
+      const gEl = document.getElementById('active-acc-gemini-pct');
+      if (gEl) gEl.innerText = `${gPct}%`;
+      const gBar = document.getElementById('active-acc-gemini-bar');
+      if (gBar) {
+        gBar.style.width = `${gPct}%`;
+        gBar.className = (gPct > 50 ? 'bg-emerald-500' : (gPct > 20 ? 'bg-amber-500' : 'bg-rose-500')) + ' h-full rounded-full transition-all duration-500';
+      }
+
+      const cEl = document.getElementById('active-acc-claude-pct');
+      if (cEl) cEl.innerText = `${cPct}%`;
+      const cBar = document.getElementById('active-acc-claude-bar');
+      if (cBar) {
+        cBar.style.width = `${cPct}%`;
+        cBar.className = (cPct > 50 ? 'bg-emerald-500' : (cPct > 20 ? 'bg-amber-500' : 'bg-rose-500')) + ' h-full rounded-full transition-all duration-500';
+      }
+    } else {
+      banner.classList.add('hidden');
+    }
+  }
+
+  // Populate config fields in settings if not currently focused
+  const refreshSelect = document.getElementById('cfg-auto-refresh');
+  if (refreshSelect && state.config.auto_refresh_quota_interval !== undefined && document.activeElement !== refreshSelect) {
+    refreshSelect.value = state.config.auto_refresh_quota_interval;
+  }
+  const stratSelect = document.getElementById('cfg-strategy');
+  if (stratSelect && state.config.rotation_strategy && document.activeElement !== stratSelect) {
+    stratSelect.value = state.config.rotation_strategy;
+  }
+  const threshInput = document.getElementById('cfg-threshold');
+  if (threshInput && state.config.min_quota_threshold !== undefined && document.activeElement !== threshInput) {
+    threshInput.value = Math.round(state.config.min_quota_threshold * 100);
+  }
+  const coolInput = document.getElementById('cfg-cooldown');
+  if (coolInput && state.config.cooldown_seconds_on_429 !== undefined && document.activeElement !== coolInput) {
+    coolInput.value = state.config.cooldown_seconds_on_429;
+  }
+  const apiInput = document.getElementById('cfg-apikey');
+  if (apiInput && state.config.api_key !== undefined && document.activeElement !== apiInput) {
+    apiInput.value = state.config.api_key || '';
   }
 
   const port = state.config.port || 8088;
@@ -183,8 +267,10 @@ function renderAccounts() {
     return;
   }
 
+  const currentActiveId = state.activeIdeAccountId || state.currentApiAccountId || (state.accounts[0] ? state.accounts[0].id : null);
+
   container.innerHTML = filtered.map(acc => {
-    const isIdeActive = acc.id === state.activeIdeAccountId;
+    const isCurrentActive = acc.id === currentActiveId;
     const isCooldown = acc.cooldown_until > now;
     const isPro = acc.plan_type === 'PRO';
 
@@ -213,10 +299,16 @@ function renderAccounts() {
     };
 
     return `
-      <div class="account-card ${isPro ? 'is-pro' : ''} bg-slate-900 border ${isIdeActive ? 'border-sky-500/80 shadow-md shadow-sky-500/10' : (isPro ? 'border-amber-500/40' : 'border-slate-800')} rounded-2xl p-5 space-y-4 flex flex-col justify-between">
+      <div class="account-card ${isPro ? 'is-pro' : ''} bg-slate-900 border ${isCurrentActive ? 'border-2 border-emerald-500 shadow-xl shadow-emerald-500/20 ring-1 ring-emerald-500/50 bg-gradient-to-b from-slate-900 via-slate-900 to-emerald-950/25' : (isPro ? 'border-amber-500/40' : 'border-slate-800')} rounded-2xl p-5 space-y-4 flex flex-col justify-between relative">
+        ${isCurrentActive ? `
+          <div class="absolute -top-3 left-5 px-3 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-500 text-slate-950 shadow-md flex items-center gap-1.5 uppercase tracking-wider">
+            <i class="fa-solid fa-star"></i> ĐANG SỬ DỤNG HIỆN TẠI
+          </div>
+        ` : ''}
+
         <div>
           <!-- Header -->
-          <div class="flex items-start justify-between">
+          <div class="flex items-start justify-between ${isCurrentActive ? 'pt-1' : ''}">
             <div class="flex items-center space-x-3">
               ${isPro ? `
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/30 border border-amber-500/50 flex items-center justify-center font-bold text-amber-400 text-sm shadow-sm relative">
@@ -224,7 +316,7 @@ function renderAccounts() {
                   <span class="absolute -top-1.5 -right-1.5 text-amber-400 text-xs drop-shadow"><i class="fa-solid fa-crown"></i></span>
                 </div>
               ` : `
-                <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center font-bold text-sky-400 text-sm">
+                <div class="w-10 h-10 rounded-xl ${isCurrentActive ? 'bg-emerald-950/80 border border-emerald-500/60 text-emerald-300' : 'bg-slate-800 border border-slate-700 text-sky-400'} flex items-center justify-center font-bold text-sm">
                   ${acc.email.substring(0, 2).toUpperCase()}
                 </div>
               `}
@@ -282,19 +374,26 @@ function renderAccounts() {
 
         <!-- Actions -->
         <div class="space-y-2 pt-2 border-t border-slate-800">
-          <button onclick="syncToIde('${acc.id}')" class="w-full py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center space-x-1.5 ${isIdeActive ? 'bg-sky-600/20 text-sky-300 border border-sky-500/50' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} transition">
-            <i class="fa-solid fa-code"></i>
-            <span>${isIdeActive ? 'Đang Active trên Antigravity (Bản Thường & IDE)' : 'Đồng bộ vào Antigravity (Bản Thường & IDE)'}</span>
-          </button>
+          ${isCurrentActive ? `
+            <div class="w-full py-2 px-3 rounded-lg text-xs font-bold bg-emerald-600/25 text-emerald-300 border border-emerald-500/70 flex items-center justify-center space-x-1.5 shadow-sm">
+              <i class="fa-solid fa-circle-check text-emerald-400"></i>
+              <span>Đang Sử Dụng (Bản Thường & IDE)</span>
+            </div>
+          ` : `
+            <button onclick="syncToIde('${acc.id}')" class="w-full py-2 px-3 rounded-lg text-xs font-medium bg-slate-800 hover:bg-sky-600/30 text-slate-200 hover:text-sky-200 border border-slate-700 hover:border-sky-500/60 transition flex items-center justify-center space-x-1.5 cursor-pointer">
+              <i class="fa-solid fa-arrow-right-arrow-left text-sky-400"></i>
+              <span>Chuyển Sang Dùng Tài Khoản Này</span>
+            </button>
+          `}
           
           <div class="grid grid-cols-3 gap-1.5 text-[11px]">
-            <button onclick="refreshSingleQuota('${acc.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-center transition" title="Làm mới Quota">
+            <button onclick="refreshSingleQuota('${acc.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-center transition cursor-pointer" title="Làm mới Quota">
               <i class="fa-solid fa-rotate"></i> Quota
             </button>
-            <button onclick="toggleAccount('${acc.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-center transition">
+            <button onclick="toggleAccount('${acc.id}')" class="p-1.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-center transition cursor-pointer">
               ${acc.disabled ? '<i class="fa-solid fa-play text-emerald-400"></i> Bật' : '<i class="fa-solid fa-pause text-amber-400"></i> Tắt'}
             </button>
-            <button onclick="deleteAccount('${acc.id}')" class="p-1.5 bg-slate-800 hover:bg-rose-900/40 text-rose-400 rounded text-center transition" title="Xóa tài khoản">
+            <button onclick="deleteAccount('${acc.id}')" class="p-1.5 bg-slate-800 hover:bg-rose-900/40 text-rose-400 rounded text-center transition cursor-pointer" title="Xóa tài khoản">
               <i class="fa-solid fa-trash"></i> Xóa
             </button>
           </div>
@@ -401,13 +500,73 @@ async function integrateClaudeCode() {
     const res = await fetch('/api/integrations/claude_code', { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast(data.message || 'Đã tạo file chạy Claude Code ngoài Desktop!');
+      showToast(data.message || 'Đã tạo file chạy Claude Code!');
     } else {
-      showToast(data.detail || 'Lỗi tạo shortcut Claude Code', true);
+      showToast(data.detail || 'Lỗi tạo file Claude Code', true);
     }
   } catch (err) {
     showToast('Lỗi: ' + err, true);
   }
+}
+
+async function restoreHermes() {
+  if (!confirm('Khôi phục cấu hình mặc định ban đầu cho Hermes Agent?')) return;
+  try {
+    showToast('Đang khôi phục cấu hình mặc định Hermes...');
+    const res = await fetch('/api/integrations/hermes/restore', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Đã khôi phục Hermes thành công!');
+      checkIntegrations();
+    } else {
+      showToast(data.detail || 'Lỗi khôi phục Hermes', true);
+    }
+  } catch (err) {
+    showToast('Lỗi: ' + err, true);
+  }
+}
+
+async function restoreCodex() {
+  if (!confirm('Gỡ bỏ thiết lập API Hub cho Codex và quay về cấu hình OpenAI mặc định?')) return;
+  try {
+    showToast('Đang gỡ bỏ cấu hình API Hub cho Codex...');
+    const res = await fetch('/api/integrations/codex/restore', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Đã khôi phục Codex về mặc định!');
+      checkIntegrations();
+    } else {
+      showToast(data.detail || 'Lỗi khôi phục Codex', true);
+    }
+  } catch (err) {
+    showToast('Lỗi: ' + err, true);
+  }
+}
+
+async function restoreClaudeCode() {
+  if (!confirm('Gỡ bỏ thiết lập API Hub cho Claude Code và quay về cấu hình Anthropic mặc định?')) return;
+  try {
+    showToast('Đang gỡ bỏ cấu hình API Hub cho Claude Code...');
+    const res = await fetch('/api/integrations/claude_code/restore', { method: 'POST' });
+    const data = await res.json();
+    if (data.success) {
+      showToast(data.message || 'Đã khôi phục Claude Code về mặc định!');
+      checkIntegrations();
+    } else {
+      showToast(data.detail || 'Lỗi khôi phục Claude Code', true);
+    }
+  } catch (err) {
+    showToast('Lỗi: ' + err, true);
+  }
+}
+
+async function refreshActiveAccountQuota() {
+  const currentActiveId = state.activeIdeAccountId || state.currentApiAccountId || (state.accounts[0] ? state.accounts[0].id : null);
+  if (!currentActiveId) {
+    showToast('Chưa có tài khoản nào được kết nối!', true);
+    return;
+  }
+  await refreshSingleQuota(currentActiveId);
 }
 
 async function startGoogleOAuth() {
@@ -594,6 +753,10 @@ function openConfigModal() {
   document.getElementById('cfg-strategy').value = state.config.rotation_strategy || 'highest_quota';
   document.getElementById('cfg-threshold').value = Math.round((state.config.min_quota_threshold || 0.05) * 100);
   document.getElementById('cfg-cooldown').value = state.config.cooldown_seconds_on_429 || 900;
+  const autoRefreshEl = document.getElementById('cfg-auto-refresh');
+  if (autoRefreshEl && state.config.auto_refresh_quota_interval !== undefined) {
+    autoRefreshEl.value = state.config.auto_refresh_quota_interval;
+  }
   document.getElementById('cfg-apikey').value = state.config.api_key || '';
   document.getElementById('config-modal').classList.remove('hidden');
 }
@@ -606,6 +769,8 @@ async function submitConfig() {
   const strategy = document.getElementById('cfg-strategy').value;
   const threshold = (parseFloat(document.getElementById('cfg-threshold').value) || 5) / 100;
   const cooldown = parseInt(document.getElementById('cfg-cooldown').value) || 900;
+  const autoRefreshEl = document.getElementById('cfg-auto-refresh');
+  const autoRefresh = autoRefreshEl ? parseInt(autoRefreshEl.value) : 300;
   const apikey = document.getElementById('cfg-apikey').value.trim();
 
   try {
@@ -616,10 +781,11 @@ async function submitConfig() {
         rotation_strategy: strategy,
         min_quota_threshold: threshold,
         cooldown_seconds_on_429: cooldown,
+        auto_refresh_quota_interval: isNaN(autoRefresh) ? 300 : autoRefresh,
         api_key: apikey
       })
     });
-    showToast('Đã lưu cấu hình Gateway thành công!');
+    showToast('Đã lưu cấu hình Gateway & Tự động làm mới Quota!');
     loadData();
   } catch (err) {
     showToast('Lỗi: ' + err, true);

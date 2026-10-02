@@ -25,6 +25,7 @@ class SmartRotator:
         self.upstream = upstream
         self.config = config
         self.rotation_history: List[Dict[str, Any]] = []
+        self.current_api_account_id: Optional[str] = None
         self._round_robin_index = 0
         self._lock = asyncio.Lock()
 
@@ -154,6 +155,7 @@ class SmartRotator:
                     self.account_mgr.save()
 
                     # Return successful result
+                    self.current_api_account_id = account.id
                     return {
                         "model": target_model,
                         "text": full_text,
@@ -165,6 +167,7 @@ class SmartRotator:
                 else:
                     # Streaming mode with zero-disruption failover buffer
                     # We buffer until the first valid packet arrives or 429 occurs
+                    self.current_api_account_id = account.id
                     generator = self._stream_with_failover(
                         target_model=target_model,
                         cloudcode_request=cloudcode_request,
@@ -235,6 +238,7 @@ class SmartRotator:
                 has_yielded = False
                 async for chunk in stream_gen:
                     has_yielded = True
+                    self.current_api_account_id = account.id
                     yield chunk, account
 
                 # Successfully finished

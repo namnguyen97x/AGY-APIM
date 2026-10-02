@@ -89,6 +89,37 @@ class AccountManager:
         if not self.accounts:
             self.auto_discover_accounts()
 
+        # Ensure active_ide_account_id is valid
+        if (not self.active_ide_account_id or self.active_ide_account_id not in self.accounts) and self.accounts:
+            # Try to match from Antigravity IDE active account
+            acc_file = GEMINI_DIR / "google_accounts.json"
+            if acc_file.exists():
+                try:
+                    data_g = json.loads(acc_file.read_text(encoding="utf-8"))
+                    active_email = data_g.get("active")
+                    for a in self.accounts.values():
+                        if a.email == active_email:
+                            self.active_ide_account_id = a.id
+                            break
+                except Exception:
+                    pass
+            # Try to match from Antigravity Cockpit (Bản Thường)
+            if not self.active_ide_account_id or self.active_ide_account_id not in self.accounts:
+                cockpit_file = USER_HOME / ".antigravity_cockpit" / "current_account.json"
+                if cockpit_file.exists():
+                    try:
+                        c_data = json.loads(cockpit_file.read_text(encoding="utf-8"))
+                        c_email = c_data.get("email")
+                        for a in self.accounts.values():
+                            if a.email == c_email:
+                                self.active_ide_account_id = a.id
+                                break
+                    except Exception:
+                        pass
+            if not self.active_ide_account_id or self.active_ide_account_id not in self.accounts:
+                self.active_ide_account_id = next(iter(self.accounts.keys()))
+            self.save()
+
     def save(self):
         data = {
             "accounts": [acc.model_dump() for acc in self.accounts.values()],

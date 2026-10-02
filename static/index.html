@@ -170,6 +170,67 @@
         </div>
       </div>
 
+      <!-- Currently Active Account Standout Banner -->
+      <div id="active-account-banner" class="bg-gradient-to-r from-slate-900 via-emerald-950/30 to-slate-900 border-2 border-emerald-500/60 rounded-2xl p-5 shadow-lg shadow-emerald-500/10 space-y-4">
+        <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+          <div class="flex items-center space-x-3.5">
+            <div id="active-acc-avatar" class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 border border-emerald-400/50 flex items-center justify-center font-black text-white text-lg shadow-md shadow-emerald-500/20 relative">
+              <span id="active-acc-initials">AG</span>
+              <span id="active-acc-crown" class="absolute -top-1.5 -right-1.5 text-amber-400 text-xs hidden"><i class="fa-solid fa-crown"></i></span>
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/50 flex items-center gap-1.5">
+                  <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  TÀI KHOẢN ĐANG SỬ DỤNG HIỆN TẠI
+                </span>
+                <span id="active-acc-tier-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-800 text-slate-300 border border-slate-700">
+                  BẢN THƯỜNG
+                </span>
+              </div>
+              <h3 class="text-base font-bold text-white mt-1 flex items-center space-x-2">
+                <span id="active-acc-email">Đang tải...</span>
+                <span id="active-acc-name" class="text-xs font-normal text-slate-400"></span>
+              </h3>
+              <p class="text-[11px] text-emerald-400/90 flex items-center gap-1 mt-0.5">
+                <i class="fa-solid fa-circle-check text-xs"></i>
+                Đang liên kết & đồng bộ Antigravity (Bản Thường & IDE) + Ưu tiên cho API Gateway
+              </p>
+            </div>
+          </div>
+
+          <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 bg-slate-950/70 border border-slate-800/80 p-3 rounded-xl">
+            <div class="space-y-1 min-w-[130px]">
+              <div class="flex justify-between text-[11px] text-slate-300">
+                <span>Gemini Quota:</span>
+                <span id="active-acc-gemini-pct" class="font-bold text-emerald-400">--%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div id="active-acc-gemini-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <div class="space-y-1 min-w-[130px]">
+              <div class="flex justify-between text-[11px] text-slate-300">
+                <span>Claude Quota:</span>
+                <span id="active-acc-claude-pct" class="font-bold text-emerald-400">--%</span>
+              </div>
+              <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                <div id="active-acc-claude-bar" class="bg-emerald-500 h-full rounded-full transition-all duration-500" style="width: 0%"></div>
+              </div>
+            </div>
+
+            <button onclick="refreshActiveAccountQuota()" class="px-3.5 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium border border-slate-700 transition flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer">
+              <i class="fa-solid fa-rotate text-emerald-400"></i>
+              <span>Làm mới Quota</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
       <!-- Account Matrix Header & Filters -->
       <section class="space-y-4">
         <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -243,10 +304,14 @@
             </div>
           </div>
 
-          <div class="pt-4 border-t border-slate-800">
-            <button onclick="integrateHermes()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+          <div class="pt-4 border-t border-slate-800 space-y-2">
+            <button onclick="integrateHermes()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 transition flex items-center justify-center space-x-2 cursor-pointer">
               <i class="fa-solid fa-wand-magic-sparkles"></i>
               <span>1-Click Tự Động Kết Nối Hermes</span>
+            </button>
+            <button onclick="restoreHermes()" class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 text-xs font-medium transition flex items-center justify-center space-x-1.5 cursor-pointer" title="Khôi phục file config.yaml gốc ban đầu">
+              <i class="fa-solid fa-arrow-rotate-left text-amber-400"></i>
+              <span>Khôi Phục Config Mặc Định Của Hermes</span>
             </button>
           </div>
         </div>
@@ -280,10 +345,14 @@
             </div>
           </div>
 
-          <div class="pt-4 border-t border-slate-800">
-            <button onclick="integrateCodex()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-medium text-xs shadow-md shadow-amber-600/30 transition flex items-center justify-center space-x-2">
+          <div class="pt-4 border-t border-slate-800 space-y-2">
+            <button onclick="integrateCodex()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-medium text-xs shadow-md shadow-amber-600/30 transition flex items-center justify-center space-x-2 cursor-pointer">
               <i class="fa-solid fa-file-arrow-down"></i>
               <span>1-Click Tạo File Khởi Chạy Codex</span>
+            </button>
+            <button onclick="restoreCodex()" class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 text-xs font-medium transition flex items-center justify-center space-x-1.5 cursor-pointer" title="Xóa script API Hub, quay về endpoint mặc định">
+              <i class="fa-solid fa-arrow-rotate-left text-amber-400"></i>
+              <span>Khôi Phục Config Mặc Định Của Codex</span>
             </button>
           </div>
         </div>
@@ -317,10 +386,14 @@
             </div>
           </div>
 
-          <div class="pt-4 border-t border-slate-800">
-            <button onclick="integrateClaudeCode()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+          <div class="pt-4 border-t border-slate-800 space-y-2">
+            <button onclick="integrateClaudeCode()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center space-x-2 cursor-pointer">
               <i class="fa-solid fa-file-arrow-down"></i>
               <span>1-Click Tạo File Khởi Chạy Claude Code</span>
+            </button>
+            <button onclick="restoreClaudeCode()" class="w-full py-2 px-3 rounded-xl bg-slate-800/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700/80 hover:border-slate-600 text-xs font-medium transition flex items-center justify-center space-x-1.5 cursor-pointer" title="Xóa script API Hub, quay về endpoint Anthropic mặc định">
+              <i class="fa-solid fa-arrow-rotate-left text-amber-400"></i>
+              <span>Khôi Phục Config Mặc Định Của Claude Code</span>
             </button>
           </div>
         </div>
@@ -425,6 +498,23 @@
             <label class="block text-slate-300 mb-1.5 font-semibold">Thời Gian Cooldown Khi Gặp Lỗi 429 (Giây)</label>
             <input type="number" id="cfg-cooldown" min="60" max="86400" step="60" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
             <p class="text-[11px] text-slate-400 mt-1">Mặc định 900 giây (15 phút) nếu Google không trả về resetTime cụ thể.</p>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 mb-1.5 font-semibold flex items-center justify-between">
+              <span>Thời Gian Tự Động Làm Mới Quota (Auto Refresh)</span>
+              <span class="text-emerald-400 text-[11px] font-normal">Mặc định: 5 phút/lần</span>
+            </label>
+            <select id="cfg-auto-refresh" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
+              <option value="60">1 phút / lần</option>
+              <option value="120">2 phút / lần</option>
+              <option value="300" selected>5 phút / lần (Mặc định - Khuyên dùng)</option>
+              <option value="600">10 phút / lần</option>
+              <option value="900">15 phút / lần</option>
+              <option value="1800">30 phút / lần</option>
+              <option value="0">Tắt tự động làm mới (Chỉ làm mới thủ công)</option>
+            </select>
+            <p class="text-[11px] text-slate-400 mt-1">Hệ thống sẽ chạy ngầm kiểm tra hạn mức còn lại của toàn bộ tài khoản theo chu kỳ đã chọn.</p>
           </div>
 
           <div>
