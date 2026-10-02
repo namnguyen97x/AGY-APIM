@@ -6,19 +6,33 @@ in the Windows System Tray (Taskbar Notification Area).
 
 import os
 import sys
-import threading
-import time
-import webbrowser
-import subprocess
 from pathlib import Path
-from PIL import Image, ImageDraw
-import pystray
-import uvicorn
-import httpx
 
 # Ensure project root is in sys.path
 PROJECT_ROOT = Path(__file__).resolve().parent
 sys.path.insert(0, str(PROJECT_ROOT))
+
+# Ensure pythonw has valid stdout and stderr streams (critical for Windows pythonw!)
+if sys.stdout is None:
+    try:
+        sys.stdout = open(PROJECT_ROOT / "daemon.log", "a", encoding="utf-8")
+    except Exception:
+        sys.stdout = open(os.devnull, "w", encoding="utf-8")
+
+if sys.stderr is None:
+    try:
+        sys.stderr = open(PROJECT_ROOT / "daemon.log", "a", encoding="utf-8")
+    except Exception:
+        sys.stderr = open(os.devnull, "w", encoding="utf-8")
+
+import threading
+import time
+import webbrowser
+import subprocess
+from PIL import Image, ImageDraw
+import pystray
+import uvicorn
+import httpx
 
 from main import app, account_mgr
 from config import load_config
@@ -61,6 +75,13 @@ def get_or_create_icon():
     dc.line([(23, 38), (41, 38)], fill=(245, 158, 11, 255), width=3)
     return img
 
+def safe_notify(icon, message, title="Antigravity Hub"):
+    try:
+        if icon:
+            icon.notify(message, title)
+    except Exception:
+        pass
+
 def open_dashboard(icon=None, item=None):
     webbrowser.open(f"http://127.0.0.1:{PORT}/")
 
@@ -69,11 +90,9 @@ def refresh_quotas_action(icon=None, item=None):
         try:
             with httpx.Client(timeout=30) as client:
                 client.post(f"http://127.0.0.1:{PORT}/api/accounts/refresh_all_quotas")
-            if icon:
-                icon.notify("Đã làm mới Quota cho tất cả tài khoản Google!", "Antigravity Hub")
+            safe_notify(icon, "Đã làm mới Quota cho tất cả tài khoản Google!", "Antigravity Hub")
         except Exception as e:
-            if icon:
-                icon.notify(f"Lỗi làm mới Quota: {e}", "Antigravity Hub")
+            safe_notify(icon, f"Lỗi làm mới Quota: {e}", "Antigravity Hub")
     threading.Thread(target=_refresh, daemon=True).start()
 
 def run_hermes_action(icon=None, item=None):
@@ -100,11 +119,9 @@ def toggle_startup(icon=None, item=None):
     if STARTUP_FILE.exists():
         try:
             STARTUP_FILE.unlink()
-            if icon:
-                icon.notify("Đã tắt tự khởi động cùng Windows.", "Antigravity Hub")
+            safe_notify(icon, "Đã tắt tự khởi động cùng Windows.", "Antigravity Hub")
         except Exception as e:
-            if icon:
-                icon.notify(f"Lỗi: {e}", "Antigravity Hub")
+            safe_notify(icon, f"Lỗi: {e}", "Antigravity Hub")
     else:
         try:
             STARTUP_DIR.mkdir(parents=True, exist_ok=True)
@@ -113,11 +130,9 @@ WshShell.CurrentDirectory = "{PROJECT_ROOT}"
 WshShell.Run "pythonw.exe ""{PROJECT_ROOT / 'tray_app.py'}""", 0, False
 '''
             STARTUP_FILE.write_text(vbs_content, encoding="utf-8")
-            if icon:
-                icon.notify("Đã bật tự khởi động cùng Windows!", "Antigravity Hub")
+            safe_notify(icon, "Đã bật tự khởi động cùng Windows!", "Antigravity Hub")
         except Exception as e:
-            if icon:
-                icon.notify(f"Lỗi tạo startup: {e}", "Antigravity Hub")
+            safe_notify(icon, f"Lỗi tạo startup: {e}", "Antigravity Hub")
 
 def get_status_text(item=None):
     total = len(account_mgr.accounts)
@@ -132,7 +147,7 @@ def main():
     server_thread = UvicornServerThread()
     server_thread.start()
 
-    # Give server 1 second to bind port
+    # Give server a moment to bind port
     time.sleep(1)
 
     # 2. Build Tray Menu
@@ -165,9 +180,10 @@ def main():
         menu=menu
     )
 
-    # Automatically notify on first launch
+    # Safely notify on first launch
     def on_ready(i):
-        i.notify(
+        safe_notify(
+            i,
             f"Gateway đang chạy ngầm trên cổng {PORT}.\nNhấp đúp chuột vào icon để mở Web Dashboard.",
             "Antigravity API Hub Sẵn Sàng"
         )
