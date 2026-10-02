@@ -202,4 +202,11 @@ def main():
     sys.exit(0)
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        import traceback
+        with open(PROJECT_ROOT / "crash.log", "a", encoding="utf-8") as f:
+            f.write(f"\n--- CRASH AT {time.ctime()} ---\n")
+            traceback.print_exc(file=f)
+
