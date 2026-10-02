@@ -1,0 +1,88 @@
+@keyframes spinSlow {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.animate-spin-slow {
+  animation: spinSlow 12s linear infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #020617;
+}
+::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #334155;
+}
+
+/* Card Styling */
+.account-card {
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+  position: relative;
+}
+
+.account-card:hover {
+  transform: translateY(-2px);
+  border-color: #38bdf8;
+  box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.12);
+}
+
+/* Pro Account Card Distinction */
+.account-card.is-pro {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(180deg, rgba(38, 28, 15, 0.6) 0%, rgba(15, 23, 42, 0.95) 100%);
+  box-shadow: 0 4px 20px -2px rgba(245, 158, 11, 0.08);
+}
+
+.account-card.is-pro:hover {
+  border-color: rgba(245, 158, 11, 0.85);
+  box-shadow: 0 12px 30px -5px rgba(245, 158, 11, 0.22);
+}
+
+.pro-badge-glow {
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.4);
+}
+
+/* Navigation Tabs */
+.tab-btn {
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s ease-in-out;
+}
+
+.tab-btn.active {
+  color: #38bdf8;
+  border-bottom-color: #38bdf8;
+  font-weight: 600;
+}
+
+/* Filter Pills */
+.filter-pill {
+  transition: all 0.15s ease;
+}
+
+.filter-pill.active {
+  background: #0284c7;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+/* Action button subtle transitions */
+.btn-action {
+  transition: all 0.15s ease;
+}
+.btn-action:hover {
+  transform: translateY(-1px);
+}

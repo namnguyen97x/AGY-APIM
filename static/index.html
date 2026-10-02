@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Antigravity Multi-Account Hub & Smart API Rotator</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Font Awesome 6 Pro icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen font-sans antialiased selection:bg-sky-500 selection:text-white">
+  
+  <!-- Navigation Header -->
+  <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3.5">
+        <div class="h-10 w-10 rounded-xl bg-gradient-to-tr from-amber-500 via-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-sky-500/20 ring-1 ring-white/20">
+          <i class="fa-solid fa-atom text-white text-lg animate-spin-slow"></i>
+        </div>
+        <div>
+          <div class="flex items-center space-x-2">
+            <h1 class="text-lg font-bold bg-gradient-to-r from-sky-400 via-indigo-300 to-amber-300 bg-clip-text text-transparent">Antigravity API Hub</h1>
+            <span class="text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full bg-sky-950 text-sky-400 border border-sky-800">Pro Edition</span>
+          </div>
+          <p class="text-xs text-slate-400">Zero-Disruption Quota Failover & Multi-Client Gateway</p>
+        </div>
+      </div>
+      
+      <!-- Top Action Controls -->
+      <div class="flex items-center space-x-2 sm:space-x-3">
+        <span id="api-status-badge" class="hidden md:inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-emerald-950/80 text-emerald-400 border border-emerald-800/80 shadow-sm">
+          <span class="w-2 h-2 mr-2 rounded-full bg-emerald-400 animate-pulse"></span>
+          Gateway Sẵn Sàng (Port <span id="gateway-port">8088</span>)
+        </span>
+        <button onclick="refreshAllQuotas()" class="btn-action text-xs px-3 py-2 rounded-xl flex items-center space-x-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700/80 text-slate-200 transition shadow-sm" title="Quét và làm mới Quota">
+          <i class="fa-solid fa-arrows-rotate text-sky-400"></i>
+          <span class="hidden sm:inline">Check Quota</span>
+        </button>
+        <button onclick="openAddAccountModal()" class="btn-action text-xs px-3.5 py-2 rounded-xl flex items-center space-x-1.5 bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-medium shadow-md shadow-sky-600/30 transition">
+          <i class="fa-solid fa-plus"></i>
+          <span>Thêm Acc</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs Bar -->
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex space-x-1 sm:space-x-4 border-t border-slate-800/40 text-xs overflow-x-auto">
+      <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="tab-btn active px-4 py-3 font-semibold border-b-2 flex items-center space-x-2 transition">
+        <i class="fa-solid fa-layer-group"></i>
+        <span>Bảng Điều Khiển</span>
+      </button>
+      <button onclick="switchTab('integrations')" id="tab-btn-integrations" class="tab-btn px-4 py-3 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-2 transition">
+        <i class="fa-solid fa-bolt-lightning text-amber-400"></i>
+        <span>Tích Hợp Nhanh (Hermes, Codex...)</span>
+        <span class="px-1.5 py-0.2 rounded-full text-[9px] bg-amber-500/20 text-amber-300 font-bold">Mới</span>
+      </button>
+      <button onclick="switchTab('rotations')" id="tab-btn-rotations" class="tab-btn px-4 py-3 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-2 transition">
+        <i class="fa-solid fa-clock-rotate-left text-emerald-400"></i>
+        <span>Nhật Ký Xoay Tua</span>
+      </button>
+      <button onclick="switchTab('settings')" id="tab-btn-settings" class="tab-btn px-4 py-3 font-medium text-slate-400 hover:text-slate-200 border-b-2 border-transparent flex items-center space-x-2 transition">
+        <i class="fa-solid fa-sliders text-slate-400"></i>
+        <span>Cài Đặt Gateway</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
+    
+    <!-- Floating Toast Notification -->
+    <div id="toast" class="fixed top-20 right-8 z-50 transform transition-all duration-300 translate-y-[-20px] opacity-0 pointer-events-none">
+      <div class="bg-slate-900 border border-sky-500/60 text-slate-100 px-5 py-3.5 rounded-2xl shadow-2xl flex items-center space-x-3 text-xs backdrop-blur-md">
+        <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        <span id="toast-msg" class="font-medium">Thông báo</span>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 1: DASHBOARD -->
+    <!-- ============================================================ -->
+    <div id="tab-dashboard" class="space-y-8">
+      
+      <!-- Key Stats Cards -->
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <!-- Card 1 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-xs text-slate-400 uppercase tracking-wider font-semibold">
+            <span>Tổng Tài Khoản</span>
+            <i class="fa-solid fa-users text-sky-400 text-sm"></i>
+          </div>
+          <div class="text-3xl font-extrabold mt-2 text-white flex items-baseline space-x-2">
+            <span id="stat-total-accounts">0</span>
+            <span class="text-xs font-normal text-slate-400">acc</span>
+          </div>
+          <div class="mt-3 flex items-center justify-between text-xs pt-2 border-t border-slate-800/80">
+            <span class="text-amber-400 font-medium flex items-center"><i class="fa-solid fa-crown mr-1"></i> <span id="stat-pro-accounts">0</span> Pro</span>
+            <span class="text-slate-400 flex items-center"><i class="fa-solid fa-user mr-1"></i> <span id="stat-free-accounts">0</span> Free</span>
+          </div>
+        </div>
+
+        <!-- Card 2 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-xs text-slate-400 uppercase tracking-wider font-semibold">
+            <span>Chiến Lược Xoay</span>
+            <i class="fa-solid fa-rotate text-sky-400 text-sm"></i>
+          </div>
+          <div class="text-xl font-bold mt-2 text-sky-300 truncate" id="stat-strategy">
+            Highest Quota
+          </div>
+          <div class="mt-3 text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+            Tự động đổi khi quota &le; <span id="stat-threshold" class="text-amber-400 font-bold">5%</span>
+          </div>
+        </div>
+
+        <!-- Card 3 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-xs text-slate-400 uppercase tracking-wider font-semibold">
+            <span>Lần Tự Động Xoay</span>
+            <i class="fa-solid fa-shield-halved text-amber-400 text-sm"></i>
+          </div>
+          <div class="text-3xl font-extrabold mt-2 text-amber-400 flex items-baseline space-x-2">
+            <span id="stat-total-rotations">0</span>
+            <span class="text-xs font-normal text-slate-400">turns</span>
+          </div>
+          <div class="mt-3 text-xs text-emerald-400 flex items-center pt-2 border-t border-slate-800/80">
+            <i class="fa-solid fa-circle-check mr-1.5"></i> Bảo toàn ngữ cảnh 100%
+          </div>
+        </div>
+
+        <!-- Card 4 -->
+        <div class="bg-slate-900/90 border border-slate-800 rounded-2xl p-4 shadow-sm relative overflow-hidden">
+          <div class="flex items-center justify-between text-xs text-slate-400 uppercase tracking-wider font-semibold">
+            <span>Active Antigravity IDE</span>
+            <i class="fa-solid fa-laptop-code text-indigo-400 text-sm"></i>
+          </div>
+          <div class="text-sm font-bold mt-2 text-emerald-300 truncate" id="stat-active-ide" title="Tài khoản đang liên kết với IDE">
+            Chưa đồng bộ
+          </div>
+          <div class="mt-3 text-xs text-slate-400 pt-2 border-t border-slate-800/80">
+            Hot-swap không mất dữ liệu chat
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Endpoints Banner -->
+      <div class="bg-gradient-to-r from-sky-950/40 via-slate-900 to-indigo-950/40 border border-slate-800 rounded-2xl p-5 shadow-md">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div class="space-y-1">
+            <h2 class="text-sm font-bold text-white flex items-center">
+              <i class="fa-solid fa-link text-sky-400 mr-2"></i>
+              API Endpoints Khả Dụng
+            </h2>
+            <p class="text-xs text-slate-400">Cung cấp chuẩn kết nối tương thích cho Cursor, Cline, Claude Code, NextChat, Hermes:</p>
+          </div>
+          <div class="flex flex-wrap gap-2 text-xs">
+            <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl font-mono text-sky-300 flex items-center space-x-2">
+              <span class="text-slate-400 font-sans">OpenAI:</span>
+              <span id="openai-endpoint-url">http://127.0.0.1:8088/v1</span>
+              <button onclick="copyToClipboard('openai-endpoint-url')" class="text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+            </div>
+            <div class="bg-slate-950/80 border border-slate-800 px-3 py-1.5 rounded-xl font-mono text-indigo-300 flex items-center space-x-2">
+              <span class="text-slate-400 font-sans">Anthropic:</span>
+              <span id="anthropic-endpoint-url">http://127.0.0.1:8088</span>
+              <button onclick="copyToClipboard('anthropic-endpoint-url')" class="text-slate-400 hover:text-white"><i class="fa-regular fa-copy"></i></button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Account Matrix Header & Filters -->
+      <section class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base font-bold text-white flex items-center">
+              <i class="fa-solid fa-server mr-2 text-sky-400"></i>
+              Danh Sách Tài Khoản & Quota Matrix
+            </h2>
+            <p class="text-xs text-slate-400">Phân biệt tài khoản Pro và Thường, tự động chọn tài khoản tối ưu theo nhu cầu</p>
+          </div>
+
+          <!-- Filter Pills -->
+          <div class="flex flex-wrap items-center gap-1.5 text-xs bg-slate-900 border border-slate-800 p-1 rounded-xl">
+            <button onclick="filterAccounts('all')" id="filter-all" class="filter-pill active px-3 py-1 rounded-lg font-medium transition">Tất cả (<span id="count-all">0</span>)</button>
+            <button onclick="filterAccounts('pro')" id="filter-pro" class="filter-pill px-3 py-1 rounded-lg font-medium text-amber-400 hover:text-amber-300 transition">👑 Pro (<span id="count-pro">0</span>)</button>
+            <button onclick="filterAccounts('free')" id="filter-free" class="filter-pill px-3 py-1 rounded-lg font-medium text-slate-400 hover:text-slate-200 transition">🆓 Free (<span id="count-free">0</span>)</button>
+            <button onclick="filterAccounts('ready')" id="filter-ready" class="filter-pill px-3 py-1 rounded-lg font-medium text-emerald-400 hover:text-emerald-300 transition">🟢 Sẵn sàng</button>
+          </div>
+        </div>
+
+        <!-- Account Cards Grid -->
+        <div id="accounts-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          <!-- Rendered via JavaScript -->
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 2: QUICK APP INTEGRATIONS (Hermes, Codex, Claude Code...) -->
+    <!-- ============================================================ -->
+    <div id="tab-integrations" class="space-y-6 hidden">
+      <div>
+        <h2 class="text-lg font-bold text-white flex items-center">
+          <i class="fa-solid fa-bolt-lightning text-amber-400 mr-2.5"></i>
+          Tích Hợp Nhanh Vào Các Ứng Dụng & Agent
+        </h2>
+        <p class="text-xs text-slate-400 mt-1">1-Click cấu hình tự động cho Hermes Agent, OpenAI Codex, Claude Code, Cursor mà không cần chỉnh sửa file bằng tay.</p>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        
+        <!-- Integration 1: Hermes Agent -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-sky-500/60 rounded-2xl p-6 space-y-5 transition shadow-lg relative flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-sky-600 flex items-center justify-center text-white text-xl shadow-md shadow-indigo-500/20">
+                  <i class="fa-solid fa-feather-pointed"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-base text-white">Hermes Agent</h3>
+                  <p class="text-xs text-slate-400">Autonomous AI Agent (Nous Research)</p>
+                </div>
+              </div>
+              <div id="hermes-status-badge">
+                <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-slate-800 text-slate-400 border border-slate-700">Đang kiểm tra...</span>
+              </div>
+            </div>
+
+            <div class="text-xs text-slate-300 space-y-2 bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl">
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Tự động cập nhật `config.yaml`
+              </div>
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Tự động sao lưu file gốc (`.bak`)
+              </div>
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Giữ nguyên 100% memory, skills và logs
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800">
+            <button onclick="integrateHermes()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-sky-600 to-indigo-600 hover:from-sky-500 hover:to-indigo-500 text-white font-medium text-xs shadow-md shadow-indigo-600/30 transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-wand-magic-sparkles"></i>
+              <span>1-Click Tự Động Kết Nối Hermes</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Integration 2: OpenAI Codex CLI / Desktop -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-amber-500/60 rounded-2xl p-6 space-y-5 transition shadow-lg relative flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center text-white text-xl shadow-md shadow-amber-500/20">
+                  <i class="fa-solid fa-terminal"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-base text-white">OpenAI Codex</h3>
+                  <p class="text-xs text-slate-400">Codex CLI & Autonomous Agent</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-amber-950 text-amber-400 border border-amber-800">Tạo Phím Tắt</span>
+            </div>
+
+            <div class="text-xs text-slate-300 space-y-2 bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl">
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Thiết lập biến môi trường `OPENAI_BASE_URL`
+              </div>
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Tạo file `scripts/Chay_Codex_Voi_Antigravity_API.bat`
+              </div>
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> 1 nhấp chuột mở ngay Codex dùng API Antigravity
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800">
+            <button onclick="integrateCodex()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-medium text-xs shadow-md shadow-amber-600/30 transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-file-arrow-down"></i>
+              <span>1-Click Tạo File Khởi Chạy Codex</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Integration 3: Claude Code CLI -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-emerald-500/60 rounded-2xl p-6 space-y-5 transition shadow-lg relative flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xl shadow-md shadow-emerald-500/20">
+                  <i class="fa-solid fa-code-compare"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-base text-white">Claude Code CLI</h3>
+                  <p class="text-xs text-slate-400">Anthropic Terminal Coding Tool</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-emerald-950 text-emerald-400 border border-emerald-800">Anthropic API</span>
+            </div>
+
+            <div class="text-xs text-slate-300 space-y-2 bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl">
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Tương thích 100% chuẩn Messages API (`/v1/messages`)
+              </div>
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Tạo `scripts/Chay_Claude_Code_API.bat`
+              </div>
+              <div class="flex items-center text-emerald-400 font-medium">
+                <i class="fa-solid fa-check mr-2"></i> Hỗ trợ Claude Opus 4.6 (Thinking) & Claude Sonnet 4.6
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800">
+            <button onclick="integrateClaudeCode()" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-medium text-xs shadow-md shadow-emerald-600/30 transition flex items-center justify-center space-x-2">
+              <i class="fa-solid fa-file-arrow-down"></i>
+              <span>1-Click Tạo File Khởi Chạy Claude Code</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Integration 4: Cursor & Windsurf & Cline -->
+        <div class="bg-slate-900 border border-slate-800 hover:border-purple-500/60 rounded-2xl p-6 space-y-5 transition shadow-lg relative flex flex-col justify-between">
+          <div class="space-y-4">
+            <div class="flex items-start justify-between">
+              <div class="flex items-center space-x-3.5">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center text-white text-xl shadow-md shadow-purple-500/20">
+                  <i class="fa-solid fa-laptop-code"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-base text-white">Cursor / Windsurf / Cline</h3>
+                  <p class="text-xs text-slate-400">AI Code Editors & Extensions</p>
+                </div>
+              </div>
+              <span class="px-2.5 py-1 rounded-full text-[11px] font-medium bg-purple-950 text-purple-300 border border-purple-800">OpenAI Compatible</span>
+            </div>
+
+            <div class="text-xs text-slate-300 space-y-2 bg-slate-950/60 border border-slate-800/80 p-3.5 rounded-xl font-mono">
+              <div class="flex items-center justify-between">
+                <span>Base URL:</span>
+                <span class="text-sky-300" id="copy-cursor-url">http://127.0.0.1:8088/v1</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>API Key:</span>
+                <span class="text-amber-300">sk-antigravity</span>
+              </div>
+              <div class="flex items-center justify-between">
+                <span>Models:</span>
+                <span class="text-emerald-300">gemini-3.8-flash-high, claude-sonnet-4-6</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="pt-4 border-t border-slate-800">
+            <button onclick="copyToClipboard('copy-cursor-url')" class="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-medium text-xs shadow-md shadow-purple-600/30 transition flex items-center justify-center space-x-2">
+              <i class="fa-regular fa-copy"></i>
+              <span>Sao Chép Cấu Hình Cho Cursor</span>
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 3: ROTATION LOGS -->
+    <!-- ============================================================ -->
+    <div id="tab-rotations" class="space-y-4 hidden">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 class="text-lg font-bold text-white flex items-center">
+            <i class="fa-solid fa-clock-rotate-left mr-2 text-emerald-400"></i>
+            Nhật Ký Tự Động Xoay & Hoạt Động API
+          </h2>
+          <p class="text-xs text-slate-400">Ghi nhận chi tiết từng lượt chuyển giao phiên làm việc khi chạm quota (Zero-disruption)</p>
+        </div>
+        <button onclick="clearRotationLogs()" class="text-xs bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-1.5 rounded-xl border border-slate-700 transition">
+          <i class="fa-solid fa-trash mr-1"></i> Xóa lịch sử
+        </button>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl overflow-hidden shadow-inner">
+        <div class="max-h-[500px] overflow-y-auto divide-y divide-slate-800/60 font-mono text-xs" id="rotation-log-container">
+          <div class="p-8 text-center text-slate-500">Chưa có sự kiện xoay tài khoản nào. Sẵn sàng nhận yêu cầu!</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- TAB 4: SETTINGS -->
+    <!-- ============================================================ -->
+    <div id="tab-settings" class="space-y-6 max-w-2xl hidden">
+      <div>
+        <h2 class="text-lg font-bold text-white flex items-center">
+          <i class="fa-solid fa-sliders text-sky-400 mr-2"></i>
+          Cấu Hình Gateway & Cơ Chế Xoay Tua
+        </h2>
+        <p class="text-xs text-slate-400">Thiết lập các ngưỡng an toàn để đảm bảo không bao giờ bị gián đoạn công việc</p>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5 shadow-lg">
+        <div class="space-y-4 text-xs">
+          <div>
+            <label class="block text-slate-300 mb-1.5 font-semibold">Chiến Lược Điều Phối Tài Khoản</label>
+            <select id="cfg-strategy" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
+              <option value="highest_quota">Highest Quota (Luôn ưu tiên acc còn nhiều quota nhất)</option>
+              <option value="priority">Priority First (Ưu tiên tài khoản Pro / Priority cao trước)</option>
+              <option value="round_robin">Round Robin (Xoay vòng đều giữa các tài khoản)</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 mb-1.5 font-semibold">Ngưỡng Quota Tối Thiểu Để Đổi Acc (%)</label>
+            <input type="number" id="cfg-threshold" min="1" max="50" step="1" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
+            <p class="text-[11px] text-slate-400 mt-1">Khi tài khoản rơi xuống mức này, các lượt hỏi tiếp theo sẽ chủ động sang acc khác trước khi bị 429.</p>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 mb-1.5 font-semibold">Thời Gian Cooldown Khi Gặp Lỗi 429 (Giây)</label>
+            <input type="number" id="cfg-cooldown" min="60" max="86400" step="60" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
+            <p class="text-[11px] text-slate-400 mt-1">Mặc định 900 giây (15 phút) nếu Google không trả về resetTime cụ thể.</p>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 mb-1.5 font-semibold">API Key Xác Thực (Tùy chọn)</label>
+            <input type="text" id="cfg-apikey" placeholder="Để trống nếu chỉ sử dụng cục bộ trên máy tính" class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-slate-100 focus:outline-none focus:border-sky-500">
+          </div>
+        </div>
+
+        <div class="pt-3 border-t border-slate-800 flex justify-end">
+          <button onclick="submitConfig()" class="px-5 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs shadow-md shadow-sky-600/30 transition">
+            Lưu Cấu Hình
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Add Account Modal -->
+  <div id="add-account-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center">
+          <i class="fa-solid fa-user-plus text-sky-400 mr-2"></i>
+          Thêm Tài Khoản Antigravity
+        </h3>
+        <button onclick="closeAddAccountModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Quick Option 1: Browser OAuth -->
+      <div class="bg-gradient-to-r from-sky-950/60 to-indigo-950/60 border border-sky-800/40 rounded-xl p-4 space-y-2">
+        <div class="flex items-center justify-between">
+          <div class="font-semibold text-xs text-sky-200 flex items-center">
+            <i class="fa-brands fa-google text-amber-400 mr-2"></i>
+            Cách 1: Đăng nhập Trình duyệt (Tự động 100%)
+          </div>
+          <button onclick="startGoogleOAuth()" class="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-medium text-xs shadow-md transition flex items-center space-x-1.5">
+            <i class="fa-solid fa-arrow-up-right-from-square"></i>
+            <span>Đăng Nhập Google</span>
+          </button>
+        </div>
+        <p class="text-[11px] text-slate-300">Nhấp để mở tab cấp quyền Google. Hệ thống sẽ tự động bắt mã và lưu tài khoản vào danh sách.</p>
+      </div>
+
+      <!-- Option 2: Paste Token/JSON -->
+      <div class="space-y-3 pt-2">
+        <div class="text-xs font-semibold text-slate-300 flex items-center">
+          <i class="fa-solid fa-key mr-2 text-slate-400"></i>
+          Cách 2: Nhập Token thủ công hoặc Dán JSON
+        </div>
+        <div class="grid grid-cols-2 gap-3 text-xs">
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Email Google</label>
+            <input type="email" id="modal-email" placeholder="example@gmail.com" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+          </div>
+          <div>
+            <label class="block text-slate-400 font-medium mb-1">Loại tài khoản</label>
+            <select id="modal-plan-type" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+              <option value="FREE">Tài khoản Thường (Free)</option>
+              <option value="PRO">Tài khoản Pro (Google One AI / Pro)</option>
+            </select>
+          </div>
+        </div>
+        <div class="text-xs">
+          <label class="block text-slate-400 font-medium mb-1">Google OAuth Refresh Token hoặc Nội dung file JSON</label>
+          <textarea id="modal-refresh-token" rows="3" placeholder="Dán 1//0e... hoặc nội dung file JSON" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 font-mono focus:outline-none focus:border-sky-500"></textarea>
+        </div>
+        <div class="text-xs">
+          <label class="block text-slate-400 font-medium mb-1">Mức độ ưu tiên (Priority 1-100)</label>
+          <input type="number" id="modal-priority" value="50" min="1" max="100" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+        <button onclick="closeAddAccountModal()" class="px-4 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs transition">Đóng</button>
+        <button onclick="submitAddAccount()" class="px-4 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-medium text-xs shadow-md transition">Lưu Token</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Account Modal -->
+  <div id="edit-account-modal" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center hidden">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl w-full max-w-sm p-6 space-y-4 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="text-base font-bold text-white flex items-center">
+          <i class="fa-solid fa-pen text-sky-400 mr-2"></i>
+          Chỉnh Sửa Tài Khoản
+        </h3>
+        <button onclick="closeEditAccountModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+      <input type="hidden" id="edit-acc-id">
+      <div class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-400 mb-1">Email</label>
+          <input type="text" id="edit-acc-email" disabled class="w-full bg-slate-950/60 border border-slate-800 rounded-lg px-3 py-2 text-slate-400 font-mono">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-medium">Tên hiển thị</label>
+          <input type="text" id="edit-acc-name" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-medium">Hạng tài khoản (Tier)</label>
+          <select id="edit-acc-plan" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+            <option value="FREE">Tài khoản Thường (Free)</option>
+            <option value="PRO">🌟 Tài khoản Pro (Google One AI / Pro Tier)</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-slate-300 mb-1 font-medium">Priority (1 - 100)</label>
+          <input type="number" id="edit-acc-priority" min="1" max="100" class="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-slate-100 focus:outline-none focus:border-sky-500">
+        </div>
+      </div>
+      <div class="flex items-center justify-end space-x-2 pt-3 border-t border-slate-800">
+        <button onclick="closeEditAccountModal()" class="px-4 py-2 rounded-lg bg-slate-800 text-slate-300 text-xs">Hủy</button>
+        <button onclick="submitEditAccount()" class="px-4 py-2 rounded-lg bg-sky-600 hover:bg-sky-500 text-white text-xs font-medium">Cập Nhật</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
