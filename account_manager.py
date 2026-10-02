@@ -389,6 +389,16 @@ class AccountManager:
                 except Exception:
                     pass
 
+            # 6. Antigravity Desktop App UI (Electron): ~/AppData/Roaming/Antigravity/app_storage.json
+            app_storage = USER_HOME / "AppData" / "Roaming" / "Antigravity" / "app_storage.json"
+            if app_storage.exists():
+                try:
+                    storage_data = json.loads(app_storage.read_text(encoding="utf-8"))
+                    storage_data["jetski.onboarding.lastLoginUsername"] = acc.email
+                    app_storage.write_text(json.dumps(storage_data, indent=2), encoding="utf-8")
+                except Exception as e:
+                    logger.debug(f"Could not update app_storage.json: {e}")
+
             self.active_ide_account_id = acc.id
             self.save()
             logger.info(f"Successfully synchronized active account {acc.email} to Antigravity IDE and Antigravity Bản Thường (Cockpit/Tools).")
