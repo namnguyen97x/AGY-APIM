@@ -38,6 +38,10 @@ goto start_tray
 
 :start_tray
 echo.
+echo [!] Kiem tra va giai phong cong 8088 neu co tien trinh cu...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8088" ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
 echo [!] Dang khoi dong Gateway duoi Khay he thong (System Tray)...
 start "" pythonw.exe tray_app.py
 ping 127.0.0.1 -n 2 >nul
@@ -60,6 +64,10 @@ exit /b 0
 
 :start_console
 echo.
+echo [!] Kiem tra va giai phong cong 8088 neu co tien trinh cu...
+for /f "tokens=5" %%a in ('netstat -aon ^| findstr ":8088" ^| findstr "LISTENING"') do (
+    taskkill /F /PID %%a >nul 2>&1
+)
 echo Dang mo Web Dashboard tren trinh duyet...
 start http://127.0.0.1:8088/
 echo.

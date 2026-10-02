@@ -73,14 +73,18 @@ def get_or_create_icon():
     ico_path = PROJECT_ROOT / "static" / "app.ico"
     if ico_path.exists():
         try:
-            return Image.open(ico_path)
+            im = Image.open(ico_path)
+            im.load()
+            return im
         except Exception:
             pass
 
     icon_path = PROJECT_ROOT / "static" / "icon.png"
     if icon_path.exists():
         try:
-            return Image.open(icon_path)
+            im = Image.open(icon_path)
+            im.load()
+            return im.convert("RGBA")
         except Exception:
             pass
 
@@ -202,6 +206,8 @@ def main():
 
     # Safely notify on first launch
     def on_ready(i):
+        i.visible = True
+        time.sleep(0.5)
         safe_notify(
             i,
             f"Gateway đang chạy ngầm trên cổng {PORT}.\nNhấp đúp chuột vào icon để mở Web Dashboard.",
