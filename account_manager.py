@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 import httpx
 from pydantic import BaseModel, Field
 
-from config import CLIENT_ID, CLIENT_SECRET, DEFAULT_DATA_DIR, LEGACY_ACCOUNTS_DIR, GEMINI_DIR
+from config import CLIENT_ID, CLIENT_SECRET, DEFAULT_DATA_DIR, LEGACY_ACCOUNTS_DIR, GEMINI_DIR, USER_HOME
 
 logger = logging.getLogger("account_manager")
 
@@ -244,17 +244,15 @@ class AccountManager:
                         account.cloudaicompanion_project = proj
                     
                     current_tier = ca_data.get("currentTier", {})
-                    paid_tier = ca_data.get("paidTier", {})
                     t_id = current_tier.get("id", "")
                     t_name = current_tier.get("name", "")
-                    if paid_tier and paid_tier.get("id"):
-                        account.plan_type = "PRO"
-                        account.tier_name = paid_tier.get("name", "Google AI Pro")
-                    elif t_id and t_id != "free-tier":
+                    if t_id and t_id != "free-tier":
                         account.plan_type = "PRO"
                         account.tier_name = t_name or "Google AI Pro"
-                    elif t_name:
-                        account.tier_name = t_name
+                    else:
+                        if account.plan_type != "PRO":
+                            account.plan_type = "FREE"
+                            account.tier_name = "Antigravity (Bản Thường)"
 
                 account.last_error = None
                 self.save()
@@ -287,17 +285,21 @@ class AccountManager:
         logger.warning(f"Account {acc.email} marked in cooldown until {datetime.fromtimestamp(cooldown_target, timezone.utc).isoformat()}")
         self.save()
 
-    def sync_to_antigravity_ide(self, account_id: str) -> bool:
+    def sync_to_antigravity(self, account_id: str) -> bool:
         """
-        Hot-swaps active account in Antigravity IDE and CLI without losing
-        ongoing chats, tabs, or conversation databases.
+        Hot-swaps active account in:
+        1. Antigravity IDE: ~/.gemini/google_accounts.json, oauth_creds.json
+        2. Antigravity CLI: ~/.gemini/antigravity-cli/antigravity-oauth-token
+        3. Antigravity Bản Thường (Cockpit): ~/.antigravity_cockpit/current_account.json
+        4. Antigravity Tools: ~/.antigravity_tools/accounts.json (current_account_id)
+        WITHOUT losing chats, tabs, databases, or memory!
         """
         acc = self.accounts.get(account_id)
         if not acc:
             return False
 
         try:
-            # 1. Update ~/.gemini/google_accounts.json
+            # 1. Antigravity IDE: ~/.gemini/google_accounts.json
             acc_file = GEMINI_DIR / "google_accounts.json"
             old_accounts = []
             if acc_file.exists():
@@ -315,7 +317,7 @@ class AccountManager:
                 "old": old_accounts
             }, indent=2), encoding="utf-8")
 
-            # 2. Update ~/.gemini/oauth_creds.json
+            # 2. Antigravity IDE: ~/.gemini/oauth_creds.json
             creds_file = GEMINI_DIR / "oauth_creds.json"
             creds_data = {
                 "access_token": acc.access_token or "",
@@ -325,7 +327,7 @@ class AccountManager:
             }
             creds_file.write_text(json.dumps(creds_data, indent=2), encoding="utf-8")
 
-            # 3. Update ~/.gemini/antigravity-cli/antigravity-oauth-token
+            # 3. Antigravity CLI: ~/.gemini/antigravity-cli/antigravity-oauth-token
             cli_token_file = GEMINI_DIR / "antigravity-cli" / "antigravity-oauth-token"
             if cli_token_file.parent.exists():
                 cli_data = {
@@ -338,10 +340,30 @@ class AccountManager:
                 }
                 cli_token_file.write_text(json.dumps(cli_data, indent=2), encoding="utf-8")
 
+            # 4. Antigravity Bản Thường (Cockpit): ~/.antigravity_cockpit/current_account.json
+            cockpit_file = USER_HOME / ".antigravity_cockpit" / "current_account.json"
+            if cockpit_file.parent.exists():
+                cockpit_file.write_text(json.dumps({
+                    "email": acc.email,
+                    "updated_at": int(time.time())
+                }, indent=2), encoding="utf-8")
+
+            # 5. Antigravity Tools: ~/.antigravity_tools/accounts.json
+            tools_file = USER_HOME / ".antigravity_tools" / "accounts.json"
+            if tools_file.exists():
+                try:
+                    t_data = json.loads(tools_file.read_text(encoding="utf-8"))
+                    t_data["current_account_id"] = acc.id
+                    tools_file.write_text(json.dumps(t_data, indent=2), encoding="utf-8")
+                except Exception:
+                    pass
+
             self.active_ide_account_id = acc.id
             self.save()
-            logger.info(f"Successfully synchronized active account {acc.email} to Antigravity IDE and CLI.")
+            logger.info(f"Successfully synchronized active account {acc.email} to Antigravity IDE and Antigravity Bản Thường (Cockpit/Tools).")
             return True
         except Exception as e:
-            logger.error(f"Failed to sync account to Antigravity IDE: {e}")
+            logger.error(f"Failed to sync account: {e}")
             return False
+
+    sync_to_antigravity_ide = sync_to_antigravity

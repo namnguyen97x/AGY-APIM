@@ -239,12 +239,12 @@ function renderAccounts() {
             <div class="flex flex-col items-end space-y-1">
               ${statusBadge}
               ${isPro ? `
-                <button onclick="togglePlanType('${acc.id}')" title="Nhấp để đổi sang Free" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/50 hover:bg-amber-500/30 transition flex items-center gap-1 cursor-pointer">
+                <button onclick="togglePlanType('${acc.id}')" title="Nhấp để đổi sang Bản Thường" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-500/20 text-amber-400 border border-amber-500/50 hover:bg-amber-500/30 transition flex items-center gap-1 cursor-pointer">
                   <i class="fa-solid fa-crown text-[9px]"></i> PRO
                 </button>
               ` : `
                 <button onclick="togglePlanType('${acc.id}')" title="Nhấp để nâng cấp lên Pro" class="px-2 py-0.5 rounded text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700 hover:text-amber-400 hover:border-amber-500/50 transition cursor-pointer">
-                  FREE
+                  BẢN THƯỜNG
                 </button>
               `}
             </div>
@@ -275,7 +275,7 @@ function renderAccounts() {
 
           <!-- Metadata -->
           <div class="mt-4 pt-3 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-[11px] text-slate-400">
-            <div>Tier: <span class="font-semibold ${isPro ? 'text-amber-300' : 'text-slate-200'}">${acc.tier_name || (isPro ? 'Google AI Pro' : 'Free Tier')}</span></div>
+            <div>Tier: <span class="font-semibold ${isPro ? 'text-amber-300' : 'text-slate-200'}">${acc.tier_name || (isPro ? 'Google AI Pro' : 'Antigravity (Bản Thường)')}</span></div>
             <div>Priority: <span class="text-slate-200 font-semibold">${acc.priority}</span></div>
           </div>
         </div>
@@ -284,7 +284,7 @@ function renderAccounts() {
         <div class="space-y-2 pt-2 border-t border-slate-800">
           <button onclick="syncToIde('${acc.id}')" class="w-full py-2 px-3 rounded-lg text-xs font-medium flex items-center justify-center space-x-1.5 ${isIdeActive ? 'bg-sky-600/20 text-sky-300 border border-sky-500/50' : 'bg-slate-800 hover:bg-slate-700 text-slate-200'} transition">
             <i class="fa-solid fa-code"></i>
-            <span>${isIdeActive ? 'Đang Active trên Antigravity IDE' : 'Đồng bộ vào Antigravity IDE'}</span>
+            <span>${isIdeActive ? 'Đang Active trên Antigravity (Bản Thường & IDE)' : 'Đồng bộ vào Antigravity (Bản Thường & IDE)'}</span>
           </button>
           
           <div class="grid grid-cols-3 gap-1.5 text-[11px]">
@@ -334,7 +334,7 @@ async function togglePlanType(accId) {
     const res = await fetch(`/api/accounts/${accId}/toggle_plan`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast(`Đã chuyển tài khoản sang ${data.plan_type === 'PRO' ? '👑 PRO' : '🆓 FREE'}!`);
+      showToast(`Đã chuyển tài khoản sang ${data.plan_type === 'PRO' ? '👑 PRO' : '🆓 BẢN THƯỜNG'}!`);
       loadData();
     }
   } catch (err) {
@@ -429,7 +429,7 @@ async function syncToIde(accId) {
     const res = await fetch(`/api/accounts/${accId}/sync_ide`, { method: 'POST' });
     const data = await res.json();
     if (data.success) {
-      showToast('Đã hot-swap tài khoản cho Antigravity IDE! Giữ nguyên 100% dữ liệu chat.');
+      showToast('Đã hot-swap tài khoản cho Antigravity (Bản Thường & IDE)! Giữ nguyên 100% dữ liệu chat.');
       loadData();
     } else {
       showToast('Lỗi đồng bộ: ' + data.error, true);

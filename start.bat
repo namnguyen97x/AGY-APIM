@@ -50,8 +50,9 @@ echo   - OpenAI API:    http://127.0.0.1:8088/v1
 echo   - Anthropic API: http://127.0.0.1:8088
 echo   - Direct API:    http://127.0.0.1:8088/responses
 echo.
-echo   * Icon he thong da xuat hien duoi goc phai Taskbar.
-echo   * Nhan phim bat ky de dong cua so nay (Gateway van chay ngam).
+echo   * Icon he thong da xuat hien tai Khay he thong Taskbar.
+echo     (Luu y Windows 11: Neu chua thay ngay, hay nhap vao mui ten ^ o canh dong ho).
+echo   * Nhan phim bat ky de dong cua so nay (Gateway van tiep tuc chay ngam).
 echo ========================================================
 echo.
 pause

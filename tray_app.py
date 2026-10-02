@@ -57,6 +57,13 @@ class UvicornServerThread(threading.Thread):
         self.server.should_exit = True
 
 def get_or_create_icon():
+    ico_path = PROJECT_ROOT / "static" / "app.ico"
+    if ico_path.exists():
+        try:
+            return Image.open(ico_path)
+        except Exception:
+            pass
+
     icon_path = PROJECT_ROOT / "static" / "icon.png"
     if icon_path.exists():
         try:

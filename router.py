@@ -188,6 +188,10 @@ class SmartRotator:
                         model=target_model,
                         reason="Quota Exceeded (429 / Resource Exhausted)"
                     )
+                    try:
+                        self.account_mgr.sync_to_antigravity(next_acc.id)
+                    except Exception:
+                        pass
                 last_exception = qe
                 continue
             except Exception as e:
@@ -253,6 +257,10 @@ class SmartRotator:
                         model=target_model,
                         reason="Stream Quota Exceeded (429)"
                     )
+                    try:
+                        self.account_mgr.sync_to_antigravity(next_acc.id)
+                    except Exception:
+                        pass
                 continue
             except Exception as e:
                 logger.error(f"Stream error on {account.email}: {e}")
