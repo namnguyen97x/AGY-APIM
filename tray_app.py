@@ -6,6 +6,7 @@ in the Windows System Tray (Taskbar Notification Area).
 
 import os
 import sys
+import logging
 from pathlib import Path
 
 # Ensure project root is in sys.path
@@ -167,7 +168,11 @@ def exit_action(icon, item=None):
     icon.stop()
 
 def main():
+    logger = logging.getLogger("antigravity_tray")
+    logger.info("=== Starting Antigravity Tray App ===")
+
     # 1. Start Uvicorn in background thread
+    logger.info("Starting UvicornServerThread...")
     server_thread = UvicornServerThread()
     server_thread.start()
 
@@ -175,6 +180,7 @@ def main():
     time.sleep(1)
 
     # 2. Build Tray Menu
+    logger.info("Building Tray Menu...")
     menu = pystray.Menu(
         pystray.MenuItem("🌐 Mở Web Dashboard", open_dashboard, default=True),
         pystray.MenuItem("🔄 Làm Mới Quota Toàn Bộ", refresh_quotas_action),
@@ -206,15 +212,20 @@ def main():
 
     # Safely notify on first launch
     def on_ready(i):
+        logger.info("on_ready setup callback called")
         i.visible = True
+        logger.info(f"i.visible set to True (handle: {getattr(i, '_icon_handle', None)})")
         time.sleep(0.5)
         safe_notify(
             i,
             f"Gateway đang chạy ngầm trên cổng {PORT}.\nNhấp đúp chuột vào icon để mở Web Dashboard.",
             "Antigravity API Hub Sẵn Sàng"
         )
+        logger.info("on_ready setup complete")
 
+    logger.info("Calling icon.run(setup=on_ready)...")
     icon.run(setup=on_ready)
+    logger.info("icon.run() returned / loop exited!")
 
     # On exit
     server_thread.stop()
